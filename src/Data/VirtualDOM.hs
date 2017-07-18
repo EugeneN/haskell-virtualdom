@@ -20,9 +20,10 @@
  -}
 module Data.VirtualDOM where
 
-import           Foundation
-import           Foundation.Collection
-import           Control.Monad (when)
+-- import           Foundation
+-- import           Foundation.Collection
+import Prelude
+import           Control.Monad (when, (>=>))
 import           GHCJS.Types
 
 import qualified Data.Map.Strict as Map
@@ -169,9 +170,9 @@ walkChildren api target old new =
     walkIndexes' =
         mapM_ (\i' ->
             let
-                i = Offset i'
+                i = i'
             in
-                patchIndexed api target (children old ! i) (children new ! i) i')
+                patchIndexed api target (children old `DOM.bangIndex` i) (children new `DOM.bangIndex` i) i')
     oldLength = fromIntegral $ toInteger $ length $ children old
     newLength = fromIntegral $ toInteger $ length $ children new
 

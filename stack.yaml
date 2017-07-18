@@ -13,7 +13,6 @@ packages:
 - .
 
 extra-deps:
-- foundation-0.0.10
 - ramus-0.1.2
 
 flags: {}

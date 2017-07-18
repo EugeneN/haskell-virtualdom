@@ -1,7 +1,8 @@
 module Data.VirtualDOM.DOM where
 
-import Foundation
-import Foundation.Collection
+-- import Foundation
+-- import Foundation.Collection
+import Prelude
 
 import GHCJS.Types
 import GHCJS.Foreign.Callback
@@ -12,9 +13,10 @@ import JavaScript.Array.Internal (JSArray)
 newtype Node = Node JSVal
 
 toJSString :: String -> JSString
-toJSString = JSString.pack . toList
+toJSString = JSString.pack
 
-
+bangIndex :: [a] -> Int -> Maybe a
+bangIndex xs idx = if idx >= length xs then Nothing else Just $ xs !! idx
 
 createElement :: String -> IO Node
 createElement name = Node <$> js_createElement (toJSString name)
@@ -37,13 +39,13 @@ appendChild (Node node) (Node parent) = js_appendChild node parent
 childCount :: Node -> IO Int
 childCount (Node e) = do
     children <- JSArray.toList <$> js_children e
-    let (CountOf l) = length children
+    let l = length children
     return l
 
 childAt :: Int -> Node -> IO (Maybe Node)
 childAt idx (Node e) = do
     children <- JSArray.toList <$> js_children e
-    return (Node <$> children ! Offset idx)
+    return $ Node <$> children `bangIndex` idx
 
 setTextContent :: String -> Node -> IO ()
 setTextContent value (Node node) = js_setTextContent (toJSString value) node
@@ -95,4 +97,3 @@ foreign import javascript unsafe "$3.addEventListener($1, $2);"
     js_addEventListener :: JSString -> Callback (JSVal -> IO()) -> JSVal -> IO ()
 
 --
-

@@ -16,7 +16,6 @@ dependencies:
     - containers
     - ghcjs-base
     - text
-    - foundation
 
 default-extensions:
     - NoImplicitPrelude
