@@ -26,6 +26,7 @@ import Prelude
 import           Control.Monad (when, (>=>))
 import           GHCJS.Types
 
+import qualified Data.List       as L
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict (Map)
 import           Data.Monoid     ((<>))
@@ -44,6 +45,13 @@ data VNode l
         , children :: [VNode l]
         }
     | Text String
+
+instance Show (VNode l) where
+  show (Element n _ ls ch) = "<" <> n <> " " <> (L.unwords . fmap show $ ls) <> "> " <> (L.unwords . fmap show $ ch) <> "</" <> n <> "> "
+  show (Text s) = s
+
+instance Show (EventListener l) where
+  show (On n _) = "on" <> n
 
 h :: String -> Props -> [VNode l] -> VNode l
 h newName newProps = Element newName newProps []
