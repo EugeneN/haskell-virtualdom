@@ -73,6 +73,7 @@ data DOM l = DOM
   , replaceChild :: l -> l -> l -> IO ()
   , removeChild :: l -> l -> IO ()
   , appendChild :: l -> l -> IO ()
+  , deleteRangeContents :: l -> IO ()
   , childCount :: l -> IO Int
   , childAt :: Int -> l -> IO (Maybe l)
   , setTextContent :: String -> l -> IO ()
@@ -89,6 +90,7 @@ domAPI = DOM
   , replaceChild = DOM.replaceChild
   , removeChild = DOM.removeChild
   , appendChild = DOM.appendChild
+  , deleteRangeContents = DOM.deleteRangeContents
   , childCount = DOM.childCount
   , childAt = DOM.childAt
   , setTextContent = DOM.setTextContent
@@ -130,8 +132,21 @@ updateProps api target old new =
             (Nothing, Nothing) ->
                 return ()
 
+patch' :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> IO ()
+patch' api target' old' new' = patchIndexed api target' old' new' 0
+
 patch :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> IO ()
-patch api target' old' new' = patchIndexed api target' old' new' 0
+patch api target' old' new' = replaceUnconditionally api target' old' new' 0
+
+replaceUnconditionally :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> Int -> IO ()
+replaceUnconditionally _ _ Nothing Nothing _ = return ()
+
+replaceUnconditionally api parent _ Nothing _ = deleteRangeContents api parent
+
+replaceUnconditionally api parent _ (Just new) _ = do
+  el <- createEl api new
+  deleteRangeContents api parent
+  appendChild api el parent
 
 patchIndexed :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> Int -> IO ()
 patchIndexed _ _ Nothing Nothing _ = return ()
