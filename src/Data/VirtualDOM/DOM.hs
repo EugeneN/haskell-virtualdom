@@ -39,6 +39,9 @@ appendChild (Node node) (Node parent) = js_appendChild node parent
 deleteRangeContents :: Node -> IO ()
 deleteRangeContents (Node n) = js_deleteRangeContents n
 
+cloneNode :: Node -> IO Node
+cloneNode (Node n) = Node <$> js_cloneNode n
+
 childCount :: Node -> IO Int
 childCount (Node e) = do
     children <- JSArray.toList <$> js_children e
@@ -86,6 +89,9 @@ foreign import javascript unsafe "$2.appendChild($1);"
 
 foreign import javascript unsafe "(function(node){var range = document.createRange(); range.selectNodeContents(node); range.deleteContents();})($1)"
     js_deleteRangeContents :: JSVal -> IO ()
+
+foreign import javascript unsafe "(function(old_element){ var new_element = old_element.cloneNode(true); old_element.parentNode.replaceChild(new_element, old_element); return new_element; })($1)"
+    js_cloneNode :: JSVal -> IO JSVal
 
 foreign import javascript unsafe "$r = $1.children;"
     js_children :: JSVal -> IO JSArray

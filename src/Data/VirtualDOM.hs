@@ -74,6 +74,7 @@ data DOM l = DOM
   , removeChild :: l -> l -> IO ()
   , appendChild :: l -> l -> IO ()
   , deleteRangeContents :: l -> IO ()
+  , cloneNode :: l -> IO l
   , childCount :: l -> IO Int
   , childAt :: Int -> l -> IO (Maybe l)
   , setTextContent :: String -> l -> IO ()
@@ -91,6 +92,7 @@ domAPI = DOM
   , removeChild = DOM.removeChild
   , appendChild = DOM.appendChild
   , deleteRangeContents = DOM.deleteRangeContents
+  , cloneNode = DOM.cloneNode
   , childCount = DOM.childCount
   , childAt = DOM.childAt
   , setTextContent = DOM.setTextContent
@@ -127,16 +129,18 @@ updateProps api target old new =
                 setAttribute api key value target
             (Just _, Nothing) ->
                 removeAttribute api key target
-            (Just prev, Just next) ->
-                when (prev /= next) (setAttribute api key next target)
+            (Just _, Just next) ->
+            -- (Just prev, Just next) ->
+                setAttribute api key next target
+                -- when (prev /= next) (setAttribute api key next target)
             (Nothing, Nothing) ->
                 return ()
 
-patch' :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> IO ()
-patch' api target' old' new' = patchIndexed api target' old' new' 0
-
 patch :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> IO ()
-patch api target' old' new' = replaceUnconditionally api target' old' new' 0
+patch api target' old' new' = patchIndexed api target' old' new' 0
+
+patch' :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> IO ()
+patch' api target' old' new' = replaceUnconditionally api target' old' new' 0
 
 replaceUnconditionally :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> Int -> IO ()
 replaceUnconditionally _ _ Nothing Nothing _ = return ()
@@ -195,10 +199,15 @@ patchIndexed api parent (Just old) (Just new) index = do
             replaceChild api n me parent
           else do
             case (old, new) of
-              (Element {props = oldProps}, Element {props = newProps}) ->
-                updateProps api me oldProps newProps
-              (_, _) -> return ()
-            walkChildren api me old new
+              (Element {props = oldProps}, Element {props = newProps}) -> do
+                -- reset event listeners
+                -- https://stackoverflow.com/questions/9251837/how-to-remove-all-listeners-in-an-element?noredirect=1&lq=1
+                me'' <- cloneNode api me
+                updateProps api me'' oldProps newProps
+                walkChildren api me'' old new
+              (_, _) ->
+                walkChildren api me old new
+            -- walkChildren api me old new
 
 walkChildren :: DOM l -> l -> VNode l -> VNode l -> IO ()
 walkChildren api target old new =
