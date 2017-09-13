@@ -37,9 +37,12 @@ type Props = Map String String
 
 data EventListener l = On String (JSVal -> IO ())
 
+data VEOption = Replace | Noop deriving (Eq)
+
 data VNode l
     = Element
         { name :: String
+        , opts :: VEOption
         , props :: Props
         , listeners :: [EventListener l]
         , children :: [VNode l]
@@ -47,14 +50,17 @@ data VNode l
     | Text String
 
 instance Show (VNode l) where
-  show (Element n _ ls ch) = "<" <> n <> " " <> (L.unwords . fmap show $ ls) <> "> " <> (L.unwords . fmap show $ ch) <> "</" <> n <> "> "
+  show (Element n _ _ ls ch) = "<" <> n <> " " <> (L.unwords . fmap show $ ls) <> "> " <> (L.unwords . fmap show $ ch) <> "</" <> n <> "> "
   show (Text s) = s
 
 instance Show (EventListener l) where
   show (On n _) = "on" <> n
 
 h :: String -> Props -> [VNode l] -> VNode l
-h newName newProps = Element newName newProps []
+h newName newProps = Element newName Noop newProps []
+
+h' :: String -> VEOption -> Props -> [VNode l] -> VNode l
+h' newName o newProps = Element newName o newProps []
 
 text :: String -> VNode l
 text = Text
@@ -118,7 +124,7 @@ removeListener api target (On n _) = removeEventListener api n target
 
 changed :: VNode l -> VNode l-> Bool
 changed (Text t1) (Text t2) = t1 /= t2
-changed e1 e2 = name e1 /= name e2
+changed e1 e2 = opts e2 == Replace || name e1 /= name e2
 
 updateListeners :: DOM l -> l -> [EventListener l] -> [EventListener l] -> IO ()
 updateListeners api me oldListeners newListeners = do
@@ -140,10 +146,10 @@ updateProps api target old new =
             (Nothing, Nothing) ->
                 return ()
 
-patch :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> IO ()
+patch :: DOM l -> l -> Maybe (VNode l) -> Maybe (VNode l) -> IO ()
 patch api target' old' new' = patchIndexed api target' old' new' 0
 
-patchIndexed :: DOM l-> l -> Maybe (VNode l) -> Maybe (VNode l) -> Int -> IO ()
+patchIndexed :: DOM l -> l -> Maybe (VNode l) -> Maybe (VNode l) -> Int -> IO ()
 patchIndexed _ _ Nothing Nothing _ = return ()
 
 patchIndexed api parent Nothing (Just new) _ = do
@@ -162,12 +168,12 @@ patchIndexed api parent (Just (Text old)) (Just (Text new)) index = do
       then setTextContent api new parent
       else throwJS (DOM.toJSString $ "patchIndexed text->text error: index /= 0 (" <> show index <> ")" )
 
-patchIndexed api parent (Just (Text _)) (Just new@(Element _ _ _ _)) _ = do
+patchIndexed api parent (Just (Text _)) (Just new@(Element _ _ _ _ _)) _ = do
   setTextContent api "" parent -- remove inner text
   n <- createEl api new
   appendChild api n parent
 
-patchIndexed api parent (Just (Element _ _ _ _)) (Just (Text new)) _ = do
+patchIndexed api parent (Just (Element _ _ _ _ _)) (Just (Text new)) _ = do
   cs <- childCount api parent
   mapM_ (f parent) (reverse [0..cs-1])
   setTextContent api new parent
